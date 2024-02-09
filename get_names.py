@@ -3,6 +3,7 @@ import glob
 import os
 import regex as re
 import math
+import get_person_data
 
 
 list_of_files = glob.glob("C:/Users/06141\Downloads/*SearchResults*.csv")
@@ -63,3 +64,5 @@ for name in names:
 
 df = pd.DataFrame({"Liens Names": unique_names})
 df.to_csv("C:/Users/06141\Downloads/liensNames.csv", index = False)
+
+get_person_data.main()
