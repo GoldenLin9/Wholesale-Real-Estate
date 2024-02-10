@@ -13,6 +13,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
+PAGE_WAIT = 3
 
 class Property:
 
@@ -30,28 +31,44 @@ class Property:
 
 
 # operating under the assumption that (entries < 10)
-def check_name(self):
-    bad_name = ["LLC", "INC", "CORP", "COMPANY", "AND", "TRUST", "TRUSTEE", "ASSOCIATION", "AMERICA", "BANK", "ASSOCIATES", "STUDIO", "CLUB", "ROOFING", "UNION", "DEPARTMENT", "&", "CITY"]
-    for part in self.name.split():
-        if part in bad_name or re.match("[0-9]", part):
-            return False
-    return True
+def bad_name(driver):
+    rows_info = driver.find_element(By.ID, "quickSearch_info")
+
+    if (rows_info.text == ""): return True
+    print(1, rows_info)
+    print(2, rows_info.text == "")
+    print(3, rows_info.get_attribute("id"))
+    print(4, rows_info.get_attribute("innerHTML"))
+
+    print(rows_info.text, rows_info.text.split("of "))
+    R = int(rows_info.text.split("of ")[1].split()[0].replace(",", ""))
+    
+    print(R, rows_info.text)
+    # person inherited no properties
+    print(R)
+    if R == 0:
+        print("RETUREND!")
+        return True
+
+    return False
+    
+    # bad_name = ["LLC", "INC", "CORP", "COMPANY", "AND", "TRUST", "TRUSTEE", "ASSOCIATION", "AMERICA", "BANK", "ASSOCIATES", "STUDIO", "CLUB", "ROOFING", "UNION", "DEPARTMENT", "&", "CITY"]
+    # for part in self.name.split():
+    #     if part in bad_name or re.match("[0-9]", part):
+    #         return False
+    # return True
 
 
 def search_person(driver, name):
-    owner_button = driver.find_element(By.XPATH, "//input[@value = 'owner']")
-    owner_button.click()
-
-    text_box = driver.find_element(By.ID, "txtSearchProperty-selectized")
+    text_box = driver.find_element(By.ID, "txtKeyWord")
     text_box.clear()
     text_box.send_keys(name)
+    text_box.send_keys(Keys.ENTER)
 
-    search_btn = driver.find_element(By.ID, "btnHomeQuickSearch")
-    search_btn.click()
+    time.sleep(PAGE_WAIT)
 
 
 def get_property_data(driver):
-    time.sleep(1)
     mail_address_elem = driver.find_element(By.ID, "mailling_add")
     mail_address = mail_address_elem.text
     print(mail_address)
@@ -69,8 +86,10 @@ def get_property_data(driver):
 
     site_city_state_zip = site_address.split("\n")[1]
 
-    site_city, site_state_zip = site_city_state_zip.split(" ")
+    print(site_city_state_zip)
+    site_city, site_state_zip = site_city_state_zip.split(", ")
 
+    site_state_zip = site_state_zip.split()
     site_state = site_state_zip[0]
     site_zip = site_state_zip[1]
 
@@ -94,24 +113,22 @@ def get_property_data(driver):
 
 # return None for no properties or a list of properties
 def find_properties(driver):
+    
+
     properties = []
     tBody = driver.find_element(By.CSS_SELECTOR, "tBody")
     tRows = tBody.find_elements(By.CSS_SELECTOR, "tr")
-
-    # person inherited no properties
-    if len(tRows) == 0:
-        return None
-    
+    links = [row.find_element(By.CSS_SELECTOR, "a").get_attribute("href") for row in tRows]
 
     # loop through each property in the table
-    for row in tRows:
-        page_link = row.find_element(By.CSS_SELECTOR, "a").get_attribute("href")
-        driver.get(page_link)
+    for link in links:
+        driver.get(link)
 
         property = get_property_data(driver)
         properties.append(property)
 
-        driver.navigate().back()
+        print("we back")
+        time.sleep(PAGE_WAIT)
 
     return properties
         
@@ -124,7 +141,7 @@ def setup():
 
 def main():
     # setup webdriver
-    search_page = "https://www.pcpao.gov/"
+    search_page = "https://www.pcpao.gov/quick-search?qu=1&input=GANTT%20CANDACE&search_option=owner"
     driver = setup()
     driver.get(search_page)
 
@@ -132,20 +149,35 @@ def main():
     list_of_files = glob.glob("C:/Users/06141\Downloads/*Names*.csv")
     latest_file = max(list_of_files, key=os.path.getctime)
 
+    on, stop = 0, 18
+
     # loop through each name and grab their information
     df = pd.read_csv(latest_file)
     for name in df["Liens Names"]:
-        # if not person.check():
-        #     continue
-
+        on+= 1
+        print(name, on)
+        if on < stop:
+            continue
+        
+        print("passed")
         search_person(driver, name)
-        properties = find_properties(driver)
 
-        if properties == None:
+
+        if bad_name(driver):
             continue
 
-        # read each property into excel
+        properties = find_properties(driver)
+
+
+        print(properties, properties == None)
+
+        if properties == None:
+            # go back to search page
+            continue
         
+        # read each property into excel
+
+        driver.get(search_page)
 
     time.sleep(10)
     driver.quit()
