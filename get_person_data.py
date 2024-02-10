@@ -13,11 +13,11 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
-PAGE_WAIT = 3
+PAGE_WAIT = 2
 
 class Property:
 
-    def __init__(self, first, last, mail_address, mail_city, mail_state, mail_zip, property_address, property_city, property_state, property_zip):
+    def __init__(self, first, last, mail_address, mail_city, mail_state, mail_zip, property_address, property_city, property_state, property_zip, second_owner, third_owner):
         self.first = first
         self.last = last
         self.mail_address = mail_address
@@ -28,87 +28,89 @@ class Property:
         self.property_city = property_city
         self.property_state = property_state
         self.property_zip = property_zip
+        self.second_owner = second_owner
+        self.third_owner = third_owner
 
+def corp(name):
+    bad_name = ["LLC", "INC", "CORP", "COMPANY", "AND", "TRUST", "TRUSTEE", "ASSOCIATION", "AMERICA", "BANK", "ASSOCIATES", "STUDIO", "CLUB", "ROOFING", "UNION", "DEPARTMENT", "&", "CITY"]
+    for part in name.split():
+        if part in bad_name or re.match("[0-9]", part):
+            return True
+        
+    return False
 
 # operating under the assumption that (entries < 10)
-def bad_name(driver):
+def bad_name(driver, name):
     rows_info = driver.find_element(By.ID, "quickSearch_info")
 
     if (rows_info.text == ""): return True
-    print(1, rows_info)
-    print(2, rows_info.text == "")
-    print(3, rows_info.get_attribute("id"))
-    print(4, rows_info.get_attribute("innerHTML"))
 
-    print(rows_info.text, rows_info.text.split("of "))
     R = int(rows_info.text.split("of ")[1].split()[0].replace(",", ""))
     
-    print(R, rows_info.text)
     # person inherited no properties
-    print(R)
     if R == 0:
-        print("RETUREND!")
         return True
 
+    if corp(name): return True
+        
     return False
-    
-    # bad_name = ["LLC", "INC", "CORP", "COMPANY", "AND", "TRUST", "TRUSTEE", "ASSOCIATION", "AMERICA", "BANK", "ASSOCIATES", "STUDIO", "CLUB", "ROOFING", "UNION", "DEPARTMENT", "&", "CITY"]
-    # for part in self.name.split():
-    #     if part in bad_name or re.match("[0-9]", part):
-    #         return False
-    # return True
 
 
 def search_person(driver, name):
     text_box = driver.find_element(By.ID, "txtKeyWord")
+
+    last, first_middle = name.split(" ", 1)
     text_box.clear()
-    text_box.send_keys(name)
+    text_box.send_keys(f"{last}, {first_middle}")
     text_box.send_keys(Keys.ENTER)
 
     time.sleep(PAGE_WAIT)
 
 
 def get_property_data(driver):
-    mail_address_elem = driver.find_element(By.ID, "mailling_add")
-    mail_address = mail_address_elem.text
-    print(mail_address)
+    
 
-    mail = mail_address.split("\n")
-    print(mail)
+    try:
+        # check owner names
+        first_second_owner = driver.find_element(By.ID, "first_second_owner").text
+        third_owner = driver.find_element(By.ID, "third_owner").text
 
-    mail_city, mail = mail[1].split(", ")
-    mail_state, mail_zip = mail.split(" ")
-    print(mail_city, mail_state, mail_zip)
+        if "\n" in first_second_owner:
+            first_owner, second_owner = first_second_owner.split("\n")
+        else:
+            first_owner, second_owner = first_second_owner, None
 
-    site_address_elem = driver.find_element(By.ID, "site_address")
-    site_address = site_address_elem.text
-    print(site_address)
+        first_second_owner.replace("\n", " ")
+        if corp(first_second_owner) or corp(third_owner):
+            return None
 
-    site_city_state_zip = site_address.split("\n")[1]
 
-    print(site_city_state_zip)
-    site_city, site_state_zip = site_city_state_zip.split(", ")
+        mail_address_elem = driver.find_element(By.ID, "mailling_add")
+        mail_address = mail_address_elem.text
 
-    site_state_zip = site_state_zip.split()
-    site_state = site_state_zip[0]
-    site_zip = site_state_zip[1]
+        
+        mail = mail_address.split("\n")
 
-    print(site_state, site_zip)
+        mail_city, mail = mail[1].split(", ")
+        mail_state, mail_zip = mail.split(" ")
 
-    # also third owner ?
-    owners = driver.find_element(By.ID, "first_second_owner")
-    first_second_owner = owners.text
-    print(first_second_owner)
+        site_address_elem = driver.find_element(By.ID, "site_address")
+        site_address = site_address_elem.text
 
-    first_owner = first_second_owner.split("\n")[0]
+        site_city_state_zip = site_address.split("\n")[1]
 
-    print(first_owner)
+        site_city, site_state_zip = site_city_state_zip.split(", ")
 
-    first_owner_last_name, first_owner_first_name = first_owner.split(", ")
+        site_state_zip = site_state_zip.split()
+        site_state = site_state_zip[0]
+        site_zip = site_state_zip[1]
 
-    print(first_owner_last_name, first_owner_first_name)
 
-    return Property(first_owner_first_name, first_owner_last_name, mail_address, mail_city, mail_state, mail_zip, site_address, site_city, site_state, site_zip)
+        first_owner_last_name, first_owner_first_name = first_owner.split(", ")
+    except:
+        return None
+
+    return Property(first_owner_first_name, first_owner_last_name, mail_address, mail_city, mail_state, mail_zip, site_address, site_city, site_state, site_zip, second_owner, third_owner)
 
 
 # return None for no properties or a list of properties
@@ -125,9 +127,10 @@ def find_properties(driver):
         driver.get(link)
 
         property = get_property_data(driver)
-        properties.append(property)
 
-        print("we back")
+        if property != None:
+            properties.append(property)
+
         time.sleep(PAGE_WAIT)
 
     return properties
@@ -146,36 +149,62 @@ def main():
     driver.get(search_page)
 
     # grab file of names
-    list_of_files = glob.glob("C:/Users/06141\Downloads/*Names*.csv")
+    list_of_files = glob.glob("C:/Users/06141\Downloads/*Names.csv")
     latest_file = max(list_of_files, key=os.path.getctime)
 
-    on, stop = 0, 18
+    on, last_stop = 0, 0
 
+    indx = 0
     # loop through each name and grab their information
+
     df = pd.read_csv(latest_file)
-    for name in df["Liens Names"]:
+    names = df["Probate Names"]
+    for name in names:
         on+= 1
-        print(name, on)
-        if on < stop:
+
+        print(f"on {on}: {name}, appended: {indx}")
+        if on < last_stop:
             continue
         
-        print("passed")
         search_person(driver, name)
 
 
-        if bad_name(driver):
+        if bad_name(driver, name):
             continue
 
         properties = find_properties(driver)
 
-
-        print(properties, properties == None)
 
         if properties == None:
             # go back to search page
             continue
         
         # read each property into excel
+        for property in properties:
+            data = {
+                "Queried Name": name,
+                "First Name": property.first,
+                "Last Name": property.last,
+                "Mail Address": property.mail_address,
+                "Mail City": property.mail_city,
+                "Mail State": property.mail_zip,
+                "Property Address": property.property_address,
+                "Property City": property.property_city,
+                "Property State": property.property_state,
+                "Property Zip": property.property_zip,
+                "Second Owner": property.second_owner,
+                "Third Owner": property.third_owner
+            }
+
+            df = pd.DataFrame(data, index = [indx])
+
+            if indx == 0:
+                df.to_csv("probates.csv", mode = "a", header = True)
+            else:
+                df.to_csv("probates.csv", mode = "a", header = False)
+
+
+            indx+= 1
 
         driver.get(search_page)
 
