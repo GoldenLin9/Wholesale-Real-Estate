@@ -53,9 +53,20 @@ def duplicated(name):
     return False
 
 
+def bad(name):
+    bad_name = ["LLC", "TRE", "INC", "CORP", "COMPANY", "AND", "TRUST", "TRUSTEE", "ASSOCIATION", "AMERICA", "BANK", "ASSOCIATES", "STUDIO", "CLUB", "ROOFING", "UNION", "DEPARTMENT", "&", "CITY"]
+    for part in name.split():
+        if part in bad_name or re.match("[0-9]", part):
+            return True
+        
+    return False
+
+
 names = df["IndirectName"]
 count = 0
 for name in names:
+    if bad(name):
+        continue
 
     if not pd.isna(name) and not duplicated(name):
         unique_names.append(name)
@@ -65,4 +76,4 @@ for name in names:
 df = pd.DataFrame({"Liens Names": unique_names})
 df.to_csv("C:/Users/06141\Downloads/liensNames.csv", index = False)
 
-get_person_data.main()
+# get_person_data.main()

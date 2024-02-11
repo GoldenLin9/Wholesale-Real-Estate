@@ -13,7 +13,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
-PAGE_WAIT = 2
+PAGE_WAIT = 2.5
 
 class Property:
 
@@ -32,9 +32,15 @@ class Property:
         self.third_owner = third_owner
 
 def corp(name):
+
+    # we don't know if corp or not
+    if name == None:
+        return False
+    
     bad_name = ["LLC", "TRE", "INC", "CORP", "COMPANY", "AND", "TRUST", "TRUSTEE", "ASSOCIATION", "AMERICA", "BANK", "ASSOCIATES", "STUDIO", "CLUB", "ROOFING", "UNION", "DEPARTMENT", "&", "CITY"]
     for part in name.split():
-        if part in bad_name or re.match("[0-9]", part):
+        fixed_part = part.replace(",", "")
+        if fixed_part in bad_name or re.match("[0-9]", part):
             return True
         
     return False
@@ -75,13 +81,16 @@ def get_property_data(driver):
         first_second_owner = driver.find_element(By.ID, "first_second_owner").text
         third_owner = driver.find_element(By.ID, "third_owner").text
 
+        third_owner = None if third_owner == "" else third_owner
+
         if "\n" in first_second_owner:
             first_owner, second_owner = first_second_owner.split("\n")
         else:
             first_owner, second_owner = first_second_owner, None
 
         first_second_owner.replace("\n", " ")
-        if corp(first_second_owner) or corp(third_owner):
+        print("owners: ", first_owner, "|", second_owner, "|", third_owner, "| res: ", (corp(first_owner) or corp(second_owner) or corp(third_owner)))
+        if corp(first_owner) or corp(second_owner) or corp(third_owner):
             return None
 
 
@@ -110,6 +119,7 @@ def get_property_data(driver):
     except:
         return None
 
+    print("returned property")
     return Property(first_owner_first_name, first_owner_last_name, mail_address, mail_city, mail_state, mail_zip, site_address, site_city, site_state, site_zip, second_owner, third_owner)
 
 
@@ -149,21 +159,22 @@ def main():
     driver.get(search_page)
 
     # grab file of names
-    list_of_files = glob.glob("C:/Users/06141\Downloads/*Names.csv")
+    list_of_files = glob.glob("C:/Users/06141\Downloads/liensNames.csv")
     latest_file = max(list_of_files, key=os.path.getctime)
+    print(latest_file)
 
-    on, last_stop = 0, 0
+    on, last_stop = 0, 1942
 
     indx = 0
     # loop through each name and grab their information
 
     df = pd.read_csv(latest_file)
-    names = df["Probate Names"]
+    names = df["Liens Names"]
     for name in names:
         on+= 1
 
         print(f"on {on}: {name}, appended: {indx}")
-        if on < last_stop:
+        if on <= last_stop:
             continue
         
         search_person(driver, name)
@@ -199,9 +210,9 @@ def main():
             df = pd.DataFrame(data, index = [indx])
 
             if indx == 0:
-                df.to_csv("probates.csv", mode = "a", header = True)
+                df.to_csv("liens.csv", mode = "a", header = True)
             else:
-                df.to_csv("probates.csv", mode = "a", header = False)
+                df.to_csv("liens.csv", mode = "a", header = False)
 
 
             indx+= 1
