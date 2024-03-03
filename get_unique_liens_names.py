@@ -3,7 +3,6 @@ import glob
 import os
 import regex as re
 import math
-import get_person_data
 
 
 list_of_files = glob.glob("C:/Users/06141\Downloads/*SearchResults*.csv")

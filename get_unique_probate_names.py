@@ -3,7 +3,6 @@ import glob
 import os
 import regex as re
 import math
-import get_person_data
 
 
 
@@ -61,10 +60,9 @@ print(latest_file)
 
 unique_names = []
 
-names = df["IndirectName"]
+names = df["DirectName"]
 count = 0
 for name in names:
-
     if bad(name):
         continue
 
@@ -72,8 +70,17 @@ for name in names:
         unique_names.append(name)
         count += 1
 
+# fix name format; easier search and check in get_data
+for i in range(len(unique_names)):
+    name = unique_names[i]
+    first, second = name.split(" ", 1)
 
-df = pd.DataFrame({"Liens Names": unique_names})
-df.to_csv("C:/Users/06141\Downloads/liensNames.csv", index = False)
+    # last, first M    Format
+    new_name = f"{first}, {second}"
+    unique_names[i] = new_name
+
+
+df = pd.DataFrame({"Probate Names": unique_names})
+df.to_csv("C:/Users/06141\Downloads/ProbateNames.csv", index = False)
 
 # get_person_data.main()

@@ -163,7 +163,7 @@ def main():
     latest_file = max(list_of_files, key=os.path.getctime)
     print(latest_file)
 
-    on, last_stop = 0, 1942
+    on, last_stop = 0, 1177
 
     indx = 0
     # loop through each name and grab their information
@@ -209,10 +209,10 @@ def main():
 
             df = pd.DataFrame(data, index = [indx])
 
-            if indx == 0:
-                df.to_csv("liens.csv", mode = "a", header = True)
+            if indx == 0 and on == 0:
+                df.to_csv("liens.csv", mode = "a", header = True, index = False)
             else:
-                df.to_csv("liens.csv", mode = "a", header = False)
+                df.to_csv("liens.csv", mode = "a", header = False, index = False)
 
 
             indx+= 1
