@@ -1,10 +1,4 @@
-import glob
-import os
-import pandas as pd
-
 import time
-from urllib.request import urlopen
-
 import regex as re
 
 from selenium import webdriver
@@ -13,7 +7,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
-PAGE_WAIT = 2
+PAGE_WAIT = 2.5
 
 class Property:
 
@@ -46,7 +40,6 @@ class Property:
         recent_homestead: {self.recent_homestead}
         """
 
-
 def corp(name):
     bad_name = ["LLC", "TRE", "INC", "CORP", "COMPANY", "AND", "TRUST", "TRUSTEE", "ASSOCIATION", "AMERICA", "BANK", "ASSOCIATES", "STUDIO", "CLUB", "ROOFING", "UNION", "DEPARTMENT", "&", "CITY"]
     for part in name.split():
@@ -56,7 +49,7 @@ def corp(name):
     return False
 
 # operating under the assumption that (entries < 10)
-def bad_name(driver, name):
+def count_search_results(driver, name):
     rows_info = driver.find_element(By.ID, "quickSearch_info")
 
     if (rows_info.text == ""): return True
@@ -73,10 +66,10 @@ def bad_name(driver, name):
 
 # breaks into last, first middle
 def break_name(name):
-    last, first_middle = name.split(",")
-    first, middle = first_middle.split(" ", 1)
+    print(name)
+    last, first_middle = name.split(", ")
+    first, middle = first_middle.split(" ", 1) if ' ' in first_middle else (first_middle, "")
     return last, first, middle
-
 
 def search_person(driver, name):
     text_box = driver.find_element(By.ID, "txtKeyWord")
@@ -87,7 +80,6 @@ def search_person(driver, name):
 
     time.sleep(PAGE_WAIT)
 
-
 def get_recent_homestead(driver):
     # looks at column of homestead
     tds = driver.find_element(By.ID, "div-exemptions").find_elements(By.CSS_SELECTOR, "td:nth-child(4n + 2)")
@@ -97,7 +89,7 @@ def get_recent_homestead(driver):
             return "Yes"
         elif homestead == "no":
             return "No"
-
+        
 def get_property_data(driver, property):
     try:
         # check owner names
@@ -112,19 +104,20 @@ def get_property_data(driver, property):
         # first_second_owner.replace("\n", " ")
         # if corp(first_second_owner) or corp(third_owner):
         #     return None
-
         mail_address_elem = driver.find_element(By.ID, "mailling_add")
         mail_address = mail_address_elem.text
         property.mail_address = mail_address
+        print(mail_address)
 
         
         mail = mail_address.split("\n")
 
-        mail_city, mail = mail[1].split(", ")
+        mail_city, mail = mail[-1].split(", ")
         property.mail_city = mail_city
 
         mail_state, mail_zip = mail.split(" ")
         property.mail_state, property.mail_zip = mail_state, mail_zip
+
 
         site_address_elem = driver.find_element(By.ID, "site_address")
         site_address = site_address_elem.text
@@ -146,33 +139,34 @@ def get_property_data(driver, property):
 
     return property
 
-
 # also returns who the good owner is
 def good_owners(owners, queried_name):
-
     matched_last, matched_first_middle = None, None
     queried_last, queried_first, queried_middle = break_name(queried_name)
 
     i = 0
     for owner in owners:
-        i+= 1
-        if corp(owner):
+        if corp(owner) or ',' not in owner:
             return None, None
         
         owner_last, owner_first, owner_middle = break_name(owner)
 
         # we don't worry about middle since public records may not contain middle
         if owner_last == queried_last and owner_first == queried_first:
-            matched_last, matched_first_middle = owner_last, f"{owner_first} {owner_middle}"
+            if len(owner_middle) > 0:
+                matched_last, matched_first_middle = owner_last, f"{owner_first} {owner_middle}"
+            elif len(owner_middle) == 0:
+                matched_last, matched_first_middle = owner_last, owner_first
+        i+= 1
 
     return matched_last, matched_first_middle
 
-
 def good_property(property_use):
-    bad_property_names = ["Condominium", "Manufactured", "Industrial"]
+    good_property_codes = ["0110", "0000"]
     code, description = property_use.split(" ", 1)
-    print(code, description)
-    return not any([bad in description for bad in bad_property_names])
+    code = code.strip()
+
+    return code in good_property_codes
 
 
 # return None for no properties or a list of properties
@@ -192,6 +186,7 @@ def find_properties(driver, queried_name):
 
         matched_last, matched_first_middle = good_owners(owners, queried_name)
 
+        print("testing... ", owners, queried_name)
         if matched_last != None and good_property(property_use):
 
             property = Property()
@@ -208,89 +203,16 @@ def find_properties(driver, queried_name):
     for i in range(len(links)):
         driver.get(links[i])
 
+        print("entering get property data")
         property = get_property_data(driver, good_name_properties[i])
-
         if property != None:
             good_house_properties.append(property)
 
     
     return good_house_properties if len(good_house_properties) > 0 else None
-        
 
 def setup():
     options = webdriver.ChromeOptions()
     options.add_experimental_option("excludeSwitches", ["enable-logging"])
     driver = webdriver.Chrome()
     return driver
-
-def main():
-    # setup webdriver
-    search_page = "https://www.pcpao.gov/quick-search?qu=1&input=GANTT%20CANDACE&search_option=owner"
-    driver = setup()
-    driver.get(search_page)
-
-    # grab file of names
-    list_of_files = glob.glob("C:/Users/06141\Downloads/probateNames.csv")
-    latest_file = max(list_of_files, key=os.path.getctime)
-
-    on, last_stop = 0, 111
-
-    indx = 0
-    # loop through each name and grab their information
-
-    df = pd.read_csv(latest_file)
-    names = df["Probate Names"]
-    for name in names:
-        on+= 1
-
-        print(f"on {on}: {name}, appended: {indx}")
-        if on < last_stop:
-            continue
-
-        search_person(driver, name)
-
-        # check if name is corp or 0 search results
-        if bad_name(driver, name):
-            continue
-
-        properties = find_properties(driver, name)
-
-
-        if properties == None:
-            # go back to search page
-            continue
-        
-        # read each property into excel
-        for property in properties:
-            data = {
-                "Queried Name": name,
-                "First Name": property.last_name,
-                "Last/Middle Name": property.first_middle_name,
-                "Mail Address": property.mail_address,
-                "Mail City": property.mail_city,
-                "Mail State": property.mail_zip,
-                "Property Address": property.property_address,
-                "Property City": property.property_city,
-                "Property State": property.property_state,
-                "Property Zip": property.property_zip,
-            }
-            print(property)
-
-            df = pd.DataFrame(data, index = [indx])
-
-            if indx == 0 and last_stop == 0:
-                df.to_csv("probates.csv", mode = "a", header = True, index = False)
-            else:
-                df.to_csv("probates.csv", mode = "a", header = False, index = False)
-
-
-            indx+= 1
-
-        driver.get(search_page)
-
-    time.sleep(10)
-    driver.quit()
-
-
-if __name__ == "__main__":
-    main()

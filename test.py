@@ -1,3 +1,8 @@
-import get_person_data
+mail_address = """C/O KRZESICKI, MICHAEL POA
+8169 LARCHWOOD RD
+LARGO, FL 33777-3154"""
 
-get_person_data.main()
+mail = mail_address.split("\n")
+print(mail)
+mail_city, mail = mail[1].split(", ")
+print(mail_city, mail)

@@ -63,10 +63,10 @@ unique_names = []
 names = df["DirectName"]
 count = 0
 for name in names:
-    if bad(name):
+    if pd.isna(name) or bad(name):
         continue
 
-    if not pd.isna(name) and not duplicated(name):
+    if not duplicated(name):
         unique_names.append(name)
         count += 1
 
