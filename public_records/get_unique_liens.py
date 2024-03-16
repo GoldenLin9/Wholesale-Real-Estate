@@ -9,6 +9,7 @@ def break_name(name):
     first, middle = first_middle.split(" ", 1) if ' ' in first_middle else (first_middle, None)
     return last, first, middle
 
+previous_names = None
 unique_names = []
 
 # REALLY INEFFICIENT O(N^2), could binary search O(logn) on names to check for duplicates but....... rn nah LMAO
@@ -59,8 +60,11 @@ def bad(name):
 list_of_files = glob.glob("C:/Users/06141\Downloads/SearchResults*.csv")
 latest_file = max(list_of_files, key=os.path.getctime)
 
+prev_df = pd.read_csv("../pulls/all_liens.csv")
+previous_names = prev_df["Previous Liens"]
+
+
 df = pd.read_csv(latest_file)
-print(latest_file)
 
 
 names = df["IndirectName"]
@@ -69,12 +73,24 @@ for name in names:
     if pd.isna(name) or ' ' not in name or bad(name):
         continue
 
+    if previous_names.str.contains(name).any():
+        print("SKIP TO LOAFER")
+        continue
+    # avoid adding duplicates into excel to save memory storage
+    elif name not in unique_names:
+        # add name to previous records if not found
+
+        data = { "Previous Liens": [name]}
+        data_df = pd.DataFrame(data)
+        data_df.to_csv("../pulls/all_liens.csv", mode = "a", header = False, index = False)
+
     if not duplicated(name):
         unique_names.append(name)
         count += 1
 
 # fix name format; easier search and check in get_data
 for i in range(len(unique_names)):
+
     name = unique_names[i]
     first, second = name.split(" ", 1)
 

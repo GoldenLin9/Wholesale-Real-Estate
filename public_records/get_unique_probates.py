@@ -60,14 +60,26 @@ list_of_files = glob.glob("C:/Users/06141\Downloads/SearchResults*.csv")
 latest_file = max(list_of_files, key=os.path.getctime)
 
 df = pd.read_csv(latest_file)
-print(latest_file)
 
+prev_df = pd.read_csv("../pulls/all_probates.csv")
+previous_names = prev_df["Previous Probates"]
 
 names = df["DirectName"]
 count = 0
 for name in names:
     if pd.isna(name) or bad(name):
         continue
+
+    if previous_names.str.contains(name).any():
+        print("SKIP TO LOAFER")
+        continue
+    # avoid adding duplicates into excel to save memory storage
+    elif name not in unique_names:
+        # add name to previous records if not found
+
+        data = { "Previous Liens": [name]}
+        data_df = pd.DataFrame(data)
+        data_df.to_csv("../pulls/all_liens.csv", mode = "a", header = False, index = False)
 
     if not duplicated(name):
         unique_names.append(name)
