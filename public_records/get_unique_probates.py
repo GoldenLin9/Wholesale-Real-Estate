@@ -77,9 +77,9 @@ for name in names:
     elif name not in unique_names:
         # add name to previous records if not found
 
-        data = { "Previous Liens": [name]}
+        data = { "Previous Probates": [name]}
         data_df = pd.DataFrame(data)
-        data_df.to_csv("../pulls/all_liens.csv", mode = "a", header = False, index = False)
+        data_df.to_csv("../pulls/all_probates.csv", mode = "a", header = False, index = False)
 
     if not duplicated(name):
         unique_names.append(name)
