@@ -98,4 +98,9 @@ for i in range(len(unique_names)):
 df = pd.DataFrame({"Probate Names": unique_names})
 df.to_csv("C:/Users/06141\Downloads/ProbateNames.csv", index = False)
 
+
+# i only run this file when i need a new pull of probates. Therefore, i can clear out all contents out of probates.csv
+with open("../probates.csv", 'w') as file:
+    file.truncate()
+
 # get_person_data.main()

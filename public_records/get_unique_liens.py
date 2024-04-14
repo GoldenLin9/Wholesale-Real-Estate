@@ -102,4 +102,8 @@ for i in range(len(unique_names)):
 df = pd.DataFrame({"Liens Names": unique_names})
 df.to_csv("C:/Users/06141\Downloads/LiensNames.csv", index = False)
 
+# i only run this file when i need a new pull of liens. Therefore, i can clear out all contents out of liens.csv
+with open("../liens.csv", 'w') as file:
+    file.truncate()
+
 # get_person_data.main()
