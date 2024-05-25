@@ -26,7 +26,7 @@ def main():
     list_of_files = glob.glob("C:/Users/06141\Downloads/probateNames.csv")
     latest_file = max(list_of_files, key=os.path.getctime)
 
-    on, last_stop = 0, 150
+    on, last_stop = 0, 126
     
 
     # loop through each name and grab their information
